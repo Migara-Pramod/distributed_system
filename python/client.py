@@ -485,7 +485,7 @@ def main():
     server_thread = Server(my_address).start()
 
     # Registration with bootstrap
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.connect((HOST, PORT))
         reg_msg = "REG %s %d %s" % (my_address.ip, my_address.port, my_address.username)
         s.sendall(attach_length(reg_msg).encode())
@@ -551,7 +551,7 @@ while len(files)<file_count:
 file_source = "./files/"
 download_loc = "./download/"
 
-my_ip = "192.168.56.1"  # you need to change eth0 accordingly.
+my_ip = "localhost"  # you need to change eth0 accordingly.
 my_port = get_available_port(my_ip, 6000)
 my_file_server_port = get_available_tcp_port(my_ip, 9500)
 my_web_server_port = get_available_tcp_port(my_ip, 9000)
