@@ -359,7 +359,7 @@ def remove_from_nodes(node_address):
 
 def unreg():
     # Unregister from boostrap
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.connect((HOST, PORT))
         reg_msg = "UNREG %s %d %s" % (my_address.ip, my_address.port, my_address.username)
         s.sendall(attach_length(reg_msg).encode())
@@ -551,7 +551,7 @@ while len(files)<file_count:
 file_source = "./files/"
 download_loc = "./download/"
 
-my_ip = netifaces.ifaddresses('eth0')[netifaces.AF_INET][0]['addr']  # you need to change eth0 accordingly.
+my_ip = "192.168.56.1"  # you need to change eth0 accordingly.
 my_port = get_available_port(my_ip, 6000)
 my_file_server_port = get_available_tcp_port(my_ip, 9500)
 my_web_server_port = get_available_tcp_port(my_ip, 9000)
@@ -560,7 +560,7 @@ my_address = Address(my_ip, my_port, my_name)
 
 # Boostrap server config
 HOST = my_ip
-PORT = 65000
+PORT = 55555
 if len(sys.argv) == 3:
     # port and ip given
     try:

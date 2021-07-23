@@ -1,3 +1,4 @@
+from flask import Flask
 from restAPI import *
 
 fileServer = Flask(__name__)
