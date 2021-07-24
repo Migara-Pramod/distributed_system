@@ -8,6 +8,7 @@ import string
 import sys
 import time
 from address import Address
+from datetime import datetime
 
 class LinkTest(threading.Thread):
     def __init__(self, socket, sender, to):
@@ -142,7 +143,22 @@ class Server(threading.Thread):
 
         remove_from_nodes(addr)
 
-    def decode_search_request(self, req, server):
+    def decode_search_ok_request(self, req):
+
+        # length SEROK no_files IP port hops filename1 filename2 ... ...
+        # 0093 SEROK 3 localhost 9502 0 Adventures of Tintin.jpg Jack and Jill.jpg American Pickers.jpg
+
+        req = req.split()
+        num = req.pop(0)
+        cmd = req.pop(0)
+        no_files = req.pop(0)
+        in_addr = req.pop(0)
+        in_port = req.pop(0)
+        hops = req.pop(0)
+
+        print(in_serok%(" ".join(req), no_files, in_addr, in_port, hops), datetime.now().time().microsecond)
+
+    def decode_search_request(self, req, incomming_addr, incomming_port, server):
         # length SER IP port file_name hops
         req = req.split()
         num_char = int(req.pop(0))
@@ -151,12 +167,14 @@ class Server(threading.Thread):
         initiator_ip = req.pop(0)
         initiator_port = int(req.pop(0))
         filename = req.pop(0)
+        filename_spaces = filename.replace("_", " ")
         hops = int(req.pop(0))
+
+        print(in_ser%(filename_spaces, incomming_addr, incomming_port), datetime.now().time().microsecond)
 
         # Check availability of file
         matching_files = []
         for f_name in files:
-            filename_spaces = filename.replace("_", " ")
             if filename_spaces.lower() in f_name.lower():
                 matching_files.append(f_name)
         
@@ -168,13 +186,19 @@ class Server(threading.Thread):
 
                 # Send to all neighbors
                 for node in nodes:
-                    server.sendto(req2.encode(), (node.ip, node.port))
+                    # Ignore sending search request back to initiator
+                    if node.ip != initiator_ip and node.port != initiator_port:
+                        server.sendto(req2.encode(), (node.ip, node.port))
+                        print(out_ser%(filename_spaces, node.ip, node.port), datetime.now().time().microsecond)
+                    else:
+                        print("Ignore sending search request back to initiator %s:%d"%(node.ip, node.port))
         else:
             # length SEROK no_files IP port hops filename1 filename2 ... ...
             res = "SEROK %d %s %d %d "%(len(matching_files), my_address.ip, my_file_server_port, hops+1)
             res += " ".join(matching_files)
             res = attach_length(res)
             server.sendto(res.encode(), (initiator_ip, initiator_port))
+            print(out_serok%(filename_spaces, len(matching_files), initiator_ip, initiator_port, hops+1), datetime.now().time().microsecond)
 
     def run(self):
         print("Starting client-side server...")
@@ -207,11 +231,10 @@ class Server(threading.Thread):
                     self.decode_leave_request(incoming_msg)
 
                 elif req_command=="SER":
-                    self.decode_search_request(incoming_msg, server)
+                    self.decode_search_request(incoming_msg, incoming_address, incoming_port, server)
                 
                 elif req_command=="SEROK":
-                    print()
-                    print(incoming_msg)
+                    self.decode_search_ok_request(incoming_msg)
                     if incoming_msg not in files_hit:
                         files_hit.append(incoming_msg)
 
@@ -374,6 +397,7 @@ def show_files():
 def show_me():
     print("My Details: %s %d %s | FileTPort: %d" % (my_ip, my_port, my_name, my_file_server_port))
 
+##Initiator
 def search(filename):
     # first check whether I'm having the file
     matching_files = []
@@ -390,6 +414,7 @@ def search(filename):
         # Send to all neighbors
         for node in nodes:
             connection.sendto(req.encode(), (node.ip, node.port))
+            print(out_ser%(filename_spaces, node.ip, node.port), datetime.now().time().microsecond)
             
     if len(matching_files)>0:
         # length SEROK no_files IP port hops filename1 filename2 ... ...
@@ -588,3 +613,9 @@ node_limit = 3
 hops_limit = 3
 
 kill_switch = 0
+
+# message format
+in_ser = "IN SER filename %s sender %s:%d time(microsecond)"
+out_ser = "OUT SER filename %s receiver %s:%d time(microsecond)"
+in_serok = "IN SEROK rec_file_names %s match_count %s sender_file_server %s:%s hops %s time(microsecond)"
+out_serok = "OUT SEROK req_filename %s match_count %d receiver %s:%d hops %d time(microsecond)"
